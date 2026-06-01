@@ -64,25 +64,56 @@ async function completeWithGrok(req: CompletionRequest): Promise<string> {
   );
   const model = process.env.GROK_MODEL ?? DEFAULT_GROK_MODEL;
 
-  const res = await fetch(`${baseUrl}/chat/completions`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${apiKey}`,
-    },
-    body: JSON.stringify({
-      model,
-      max_tokens: req.maxTokens,
-      temperature: 0.4,
-      response_format: { type: "json_object" },
-      messages: [{ role: "user", content: req.prompt }],
-    }),
-  });
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+    Authorization: `Bearer ${apiKey}`,
+  };
+  // OpenRouter uses these optional headers for app attribution/ranking. They're
+  // ignored by other OpenAI-compatible providers, so it's safe to always send.
+  if (baseUrl.includes("openrouter.ai")) {
+    headers["HTTP-Referer"] = process.env.NEXTAUTH_URL ?? "http://localhost:3000";
+    headers["X-Title"] = "DevPath";
+  }
 
+  const basePayload = {
+    model,
+    max_tokens: req.maxTokens,
+    temperature: 0.4,
+    messages: [{ role: "user", content: req.prompt }],
+  };
+
+  const send = (jsonMode: boolean) =>
+    fetch(`${baseUrl}/chat/completions`, {
+      method: "POST",
+      headers,
+      body: JSON.stringify(
+        jsonMode
+          ? { ...basePayload, response_format: { type: "json_object" } }
+          : basePayload,
+      ),
+    });
+
+  // Prefer JSON mode, but some models/providers reject `response_format`.
+  // If that's the rejection reason, retry once without it (the prompt already
+  // asks for raw JSON, and the caller strips any stray prose).
+  let res = await send(true);
+  if (!res.ok) {
+    const detail = await res.text().catch(() => "");
+    if (
+      (res.status === 400 || res.status === 422) &&
+      /response_format|json/i.test(detail)
+    ) {
+      res = await send(false);
+    } else {
+      throw new Error(
+        `AI provider error (${res.status}) from ${baseUrl}: ${detail.slice(0, 500)}`,
+      );
+    }
+  }
   if (!res.ok) {
     const detail = await res.text().catch(() => "");
     throw new Error(
-      `Grok/Groq API error (${res.status}): ${detail.slice(0, 500)}`,
+      `AI provider error (${res.status}) from ${baseUrl}: ${detail.slice(0, 500)}`,
     );
   }
 

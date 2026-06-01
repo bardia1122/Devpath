@@ -7,13 +7,21 @@ import {
   getRoadmapById,
   updateRoadmap,
 } from "@/lib/db/queries";
+import { enforceRateLimits, getClientIp } from "@/lib/rate-limit";
 
 export const runtime = "nodejs";
 
 type Params = { params: Promise<{ id: string }> };
 
-export async function GET(_req: Request, { params }: Params) {
+export async function GET(req: Request, { params }: Params) {
   const { id } = await params;
+
+  // GET is reachable without auth (public roadmaps), so guard by IP.
+  const limited = enforceRateLimits([
+    { key: `roadmap-get:ip:${getClientIp(req)}`, limit: 120, windowMs: 60_000 },
+  ]);
+  if (limited) return limited;
+
   const roadmap = await getRoadmapById(id);
   if (!roadmap) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
@@ -30,8 +38,8 @@ export async function GET(_req: Request, { params }: Params) {
 }
 
 const patchSchema = z.object({
-  title: z.string().min(1).optional(),
-  targetRole: z.string().min(1).optional(),
+  title: z.string().min(1).max(160).optional(),
+  targetRole: z.string().min(1).max(120).optional(),
   isPublic: z.boolean().optional(),
 });
 
@@ -42,14 +50,16 @@ export async function PATCH(req: Request, { params }: Params) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
+  const limited = enforceRateLimits([
+    { key: `roadmap-write:user:${session.user.id}`, limit: 60, windowMs: 60_000 },
+  ]);
+  if (limited) return limited;
+
   let patch: z.infer<typeof patchSchema>;
   try {
     patch = patchSchema.parse(await req.json());
-  } catch (err) {
-    return NextResponse.json(
-      { error: "Invalid request", details: String(err) },
-      { status: 400 },
-    );
+  } catch {
+    return NextResponse.json({ error: "Invalid request" }, { status: 400 });
   }
 
   const updated = await updateRoadmap(id, session.user.id, patch);
@@ -68,6 +78,11 @@ export async function DELETE(_req: Request, { params }: Params) {
   if (!session?.user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+
+  const limited = enforceRateLimits([
+    { key: `roadmap-write:user:${session.user.id}`, limit: 60, windowMs: 60_000 },
+  ]);
+  if (limited) return limited;
 
   const deleted = await deleteRoadmap(id, session.user.id);
   if (!deleted) {

@@ -63,15 +63,26 @@ cp .env.example .env.local
     - **Groq Cloud** (keys start `gsk_`) — the default. Get one at <https://console.groq.com>.
     - **xAI Grok** (keys start `xai-`) — set `GROK_BASE_URL=https://api.x.ai/v1`
       and `GROK_MODEL=grok-2-latest`.
+    - **OpenRouter** (keys start `sk-or-v1-`) — set
+      `GROK_BASE_URL=https://openrouter.ai/api/v1` and a `GROK_MODEL` such as
+      `meta-llama/llama-3.3-70b-instruct`. Useful where Groq is geo-blocked.
 
   Selection order is `AI_PROVIDER` (if set) → `ANTHROPIC_API_KEY` → `GROK_API_KEY`.
   Set `AI_PROVIDER=anthropic` or `AI_PROVIDER=grok` to force one when both keys exist.
 
 ### 3. Set up the database
 
+The repo ships a `docker-compose.yml` with a ready-to-use Postgres. To start it:
+
 ```bash
-npm run db:push      # sync the Drizzle schema directly, or:
-npm run db:migrate   # apply the generated SQL migration in drizzle/migrations
+docker compose up -d   # Postgres on 127.0.0.1:5432 (user/pass/db = devpath)
+```
+
+Then create the tables:
+
+```bash
+npm run db:migrate   # apply the SQL migration in drizzle/migrations, or:
+npm run db:push      # sync the Drizzle schema directly (interactive)
 ```
 
 ### 4. Run
@@ -124,6 +135,25 @@ lib/
 GitHub repo sync for automatic skill detection, multiple-roadmap templates,
 PNG/PDF export, a community browse page, and weekly email digests — see the
 blueprint for the full list.
+
+## Security
+
+- **Secrets** live only in `.env.local` (gitignored). Only `.env.example` (no
+  values) is committed.
+- **Auth**: every mutating API route requires a valid session; roadmap edits,
+  deletes, and progress updates additionally enforce **ownership**. Private
+  roadmaps are never returned to non-owners.
+- **Input validation**: all request bodies are validated with `zod` (with length
+  caps); database access is fully parameterized via Drizzle (no string SQL).
+- **Rate limiting** (`lib/rate-limit.ts`): an in-memory fixed-window limiter
+  guards every API route so a single client can't crash the app or drain the AI
+  quota. Generation is the tightest (**5 / 5 min per user**, plus a per-IP
+  backstop); progress and edits are higher. _Note: in-memory state is per
+  process — swap in a shared store (e.g. Upstash Redis) for multi-instance
+  deployments._
+- **Error responses** are generic; full error detail is logged server-side only.
+- **Headers**: `X-Content-Type-Options`, `X-Frame-Options`, `Referrer-Policy`,
+  and `Permissions-Policy` are set on every response; `X-Powered-By` is removed.
 
 ## Contributing
 

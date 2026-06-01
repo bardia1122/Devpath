@@ -24,7 +24,9 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   pages: { signIn: "/login" },
   callbacks: {
     async jwt({ token, account, profile }) {
-      // Runs on first sign-in (account + profile present). Sync to our DB.
+      // On first sign-in, capture the GitHub identity into the token. We keep it
+      // around so the DB upsert below can be retried on later requests if the
+      // database happened to be unreachable during sign-in.
       if (account && profile) {
         const gh = profile as unknown as {
           id: number;
@@ -32,20 +34,31 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           name?: string | null;
           avatar_url?: string | null;
         };
+        token.githubId = String(gh.id);
+        token.username = gh.login;
+        token.name = gh.name ?? undefined;
+        token.avatarUrl = gh.avatar_url ?? undefined;
+        if (account.access_token) token.githubAccessToken = account.access_token;
+      }
+
+      // Ensure we have an app user id. If the DB was down at sign-in, this runs
+      // again on subsequent requests and self-heals once the DB is reachable —
+      // no manual sign-out/in required.
+      if (!token.userId && token.githubId) {
         try {
           const user = await upsertUser({
-            githubId: String(gh.id),
-            username: gh.login,
-            name: gh.name,
-            avatarUrl: gh.avatar_url,
-            githubAccessToken: account.access_token ?? null,
+            githubId: token.githubId,
+            username: token.username ?? token.githubId,
+            name: token.name ?? null,
+            avatarUrl: token.avatarUrl ?? null,
+            githubAccessToken: token.githubAccessToken ?? null,
           });
           token.userId = user.id;
           token.username = user.username;
           token.avatarUrl = user.avatarUrl ?? undefined;
           token.name = user.name ?? undefined;
         } catch (err) {
-          // Don't block sign-in if the DB is unavailable; log for visibility.
+          // Don't block the session if the DB is unavailable; log for visibility.
           console.error("Failed to upsert user on sign-in:", err);
         }
       }

@@ -1,0 +1,56 @@
+@import "tailwindcss";
+
+@theme inline {
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  /* Dark-mode-first: developer audience expects it. */
+  background-color: #09090b; /* zinc-950 */
+  color: #f4f4f5; /* zinc-100 */
+  -webkit-font-smoothing: antialiased;
+}
+
+/* React Flow theming tweaks so it blends with the dark canvas. */
+.react-flow__attribution {
+  display: none;
+}
+
+.react-flow__controls button {
+  background-color: #18181b;
+  border-bottom: 1px solid #27272a;
+  color: #a1a1aa;
+}
+.react-flow__controls button:hover {
+  background-color: #27272a;
+}
+
+/* Subtle slide-in for the skill drawer (Radix data-state driven). */
+@keyframes drawer-in {
+  from {
+    transform: translateX(100%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+@keyframes drawer-out {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(100%);
+  }
+}
+[data-state="open"].dp-drawer {
+  animation: drawer-in 0.25s ease-out;
+}
+[data-state="closed"].dp-drawer {
+  animation: drawer-out 0.2s ease-in;
+}

@@ -22,6 +22,12 @@ export async function GET(req: Request, { params }: Params) {
   ]);
   if (limited) return limited;
 
+  // `id` is a uuid column; a malformed id can't match anything, so treat it as
+  // not-found rather than letting the DB throw a cast error (500).
+  if (!z.string().uuid().safeParse(id).success) {
+    return NextResponse.json({ error: "Not found" }, { status: 404 });
+  }
+
   const roadmap = await getRoadmapById(id);
   if (!roadmap) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
@@ -55,6 +61,13 @@ export async function PATCH(req: Request, { params }: Params) {
   ]);
   if (limited) return limited;
 
+  if (!z.string().uuid().safeParse(id).success) {
+    return NextResponse.json(
+      { error: "Not found or not owned by you" },
+      { status: 404 },
+    );
+  }
+
   let patch: z.infer<typeof patchSchema>;
   try {
     patch = patchSchema.parse(await req.json());
@@ -83,6 +96,13 @@ export async function DELETE(_req: Request, { params }: Params) {
     { key: `roadmap-write:user:${session.user.id}`, limit: 60, windowMs: 60_000 },
   ]);
   if (limited) return limited;
+
+  if (!z.string().uuid().safeParse(id).success) {
+    return NextResponse.json(
+      { error: "Not found or not owned by you" },
+      { status: 404 },
+    );
+  }
 
   const deleted = await deleteRoadmap(id, session.user.id);
   if (!deleted) {

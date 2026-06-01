@@ -4,7 +4,8 @@ Developers enter their current skills and a target role, and DevPath generates a
 personalized, interactive learning roadmap (powered by Claude) that they can
 explore on a React Flow canvas, track progress on, and share publicly.
 
-This repo implements **Phase 1 (MVP)** of [`docs/BLUEPRINT.md`](./docs/BLUEPRINT.md).
+This repo implements **Phase 1 (MVP)** of the DevPath product blueprint (a
+private design doc, not published here).
 
 ## Features (Phase 1)
 
@@ -133,8 +134,7 @@ lib/
 ## What's next (Phase 2)
 
 GitHub repo sync for automatic skill detection, multiple-roadmap templates,
-PNG/PDF export, a community browse page, and weekly email digests — see the
-blueprint for the full list.
+PNG/PDF export, a community browse page, and weekly email digests.
 
 ## Security
 

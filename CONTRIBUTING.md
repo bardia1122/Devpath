@@ -30,7 +30,7 @@ npm run build
   Tailwind utility classes, and the dark-mode-first design.
 - Never commit secrets. `.env.local` is gitignored; only commit `.env.example`
   with empty/placeholder values.
-- New features for Phase 2+ are tracked in [`docs/BLUEPRINT.md`](./docs/BLUEPRINT.md).
+- New features for Phase 2+ are tracked in the project's private design blueprint.
 
 ## Reporting issues
 

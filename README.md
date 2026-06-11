@@ -1,11 +1,17 @@
 # DevPath — Visual Career Roadmap Generator
 
 Developers enter their current skills and a target role, and DevPath generates a
-personalized, interactive learning roadmap (powered by Claude) that they can
+personalized, interactive learning roadmap that they can
 explore on a React Flow canvas, track progress on, and share publicly.
 
-This repo implements **Phase 1 (MVP)** of the DevPath product blueprint (a
-private design doc, not published here).
+![Homepage](./photos/homepage.jpg)
+![Result](./photos/result.png)
+![Side](./photos/side.jpg)
+
+
+
+
+This repo implements **Phase 1 (MVP)** of the DevPath product.
 
 ## Features (Phase 1)
 

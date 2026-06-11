@@ -43,3 +43,5 @@ next-env.d.ts
 
 # private design doc — kept locally, never published
 docs/BLUEPRINT.md
+photos/
+
